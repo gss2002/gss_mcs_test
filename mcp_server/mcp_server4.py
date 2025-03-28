@@ -3,8 +3,7 @@ import boto3
 import os
 import logging
 import redshift_connector
-from flask import Flask, Response, request, jsonify
-from flask.streaming import stream_with_context  # Added for context preservation
+from flask import Flask, Response, request, jsonify, stream_with_context  # Correct import
 from flask_sse import sse
 from werkzeug.serving import run_simple
 import sqlparse
