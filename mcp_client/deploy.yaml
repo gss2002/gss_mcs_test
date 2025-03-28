@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamlit-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamlit-mcp
+  template:
+    metadata:
+      labels:
+        app: streamlit-mcp
+    spec:
+      containers:
+      - name: streamlit-mcp
+        image: <your-ecr-repo>/streamlit-mcp:latest
+        ports:
+        - containerPort: 8501
+        env:
+        - name: MCP_SERVER_URL
+          value: "http://mcp-redshift-service:8080/mcp"
+        - name: MCP_API_KEY
+          value: "your-secure-api-key-here"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamlit-mcp-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8501
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: streamlit-mcp
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamlit-mcp-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/auth-type: oidc
+    alb.ingress.kubernetes.io/auth-idp-oidc: |
+      {"issuer":"https://<your-oidc-issuer-url>","clientId":"<your-client-id>","clientSecret":" <your-client-secret>","usernameClaim":"email"}
+    alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
+    alb.ingress.kubernetes.io/auth-scope: openid
+    alb.ingress.kubernetes.io/auth-session-cookie: AWSELBAuthSessionCookie
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: <your-acm-certificate-arn>
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: streamlit-mcp-service
+            port:
+              number: 8501
